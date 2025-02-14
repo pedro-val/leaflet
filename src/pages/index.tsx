@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import 'leaflet/dist/leaflet.css';
+import { LatLngExpression, LatLngBoundsExpression } from 'leaflet';
 
 const MapContainer = dynamic(
   () => import('react-leaflet').then((mod) => mod.MapContainer),
@@ -18,12 +19,45 @@ const Popup = dynamic(() => import('react-leaflet').then((mod) => mod.Popup), {
   ssr: false,
 });
 
+const initialPosition: LatLngExpression = [-14.235, -51.9253];
+const rioDeJaneiro: LatLngExpression = [-22.9068, -43.1729];
+const saoPaulo: LatLngExpression = [-23.5505, -46.6333];
+
+const rioDeJaneiroBounds: LatLngBoundsExpression = [
+  [-22.9519, -43.2105],
+  [-22.8633, -43.1139],
+];
+
+const saoPauloBounds: LatLngBoundsExpression = [
+  [-23.6821, -46.7359],
+  [-23.5015, -46.5445],
+];
+
+const initialBounds: LatLngBoundsExpression = [
+  [-33.7472, -73.9872],
+  [5.2718, -34.7922],
+];
+
 export default function Home() {
-  const [position, setPosition] = useState<[number, number] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [position, setPosition] = useState<LatLngExpression>(initialPosition);
+  const mapRef = useRef<any>(null);
+
+  const handleButtonClick = (
+    newPosition: LatLngExpression,
+    bounds: LatLngBoundsExpression,
+    zoom: number,
+  ) => {
+    setPosition(newPosition);
+    if (mapRef.current) {
+      mapRef.current.flyToBounds(bounds, { maxZoom: zoom });
+    }
+  };
 
   useEffect(() => {
-    import('leaflet').then((L) => {
+    if (typeof window !== 'undefined') {
+      const L = require('leaflet');
+
+      // Corrige o ícone padrão do Leaflet
       const DefaultIcon = new L.Icon({
         iconRetinaUrl:
           'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
@@ -36,45 +70,63 @@ export default function Home() {
         shadowSize: [41, 41],
       });
 
-      const MarkerPrototype = L.Marker.prototype;
-      MarkerPrototype.options.icon = DefaultIcon;
-    });
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setPosition([pos.coords.latitude, pos.coords.longitude]);
-      },
-      (err) => {
-        setError(`Erro ao obter localização: ${err.message}`);
-      },
-    );
+      L.Marker.prototype.options.icon = DefaultIcon;
+    }
   }, []);
 
-  if (error) {
-    return <p>{error}</p>;
-  }
-
-  if (!position) {
-    return <p>Obtendo localização...</p>;
-  }
-
   return (
-    <div style={{ height: '100vh' }}>
-      <MapContainer
-        center={position}
-        zoom={13}
-        style={{ height: '100%', width: '100%' }}
+    <div>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          padding: '10px',
+          background: '#f0f0f0',
+        }}
       >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a 
-          href="https://www.openstreetmap.org/copyright"
-          >OpenStreetMap</a> contributors'
-        />
-        <Marker position={position}>
-          <Popup>Você está aqui</Popup>
-        </Marker>
-      </MapContainer>
+        <button
+          onClick={() =>
+            handleButtonClick(rioDeJaneiro, rioDeJaneiroBounds, 13)
+          }
+          style={{ margin: '0 10px' }}
+          type="button"
+        >
+          Rio de Janeiro
+        </button>
+        <button
+          onClick={() => handleButtonClick(saoPaulo, saoPauloBounds, 13)}
+          style={{ margin: '0 10px' }}
+          type="button"
+        >
+          São Paulo
+        </button>
+        <button
+          onClick={() => handleButtonClick(initialPosition, initialBounds, 5)}
+          style={{ margin: '0 10px' }}
+          type="button"
+        >
+          Visualização Inicial
+        </button>
+      </div>
+      <div style={{ height: '90vh' }}>
+        <MapContainer
+          center={position}
+          zoom={5}
+          style={{ height: '100%', width: '100%' }}
+          whenReady={(mapInstance) => {
+            mapRef.current = mapInstance.target;
+            mapInstance.target.flyToBounds(initialBounds, { maxZoom: 5 });
+          }}
+        >
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          />
+          <Marker position={position}>
+            <Popup>Você está aqui</Popup>
+          </Marker>
+        </MapContainer>
+      </div>
     </div>
   );
 }
