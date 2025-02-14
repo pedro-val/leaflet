@@ -1,7 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import 'leaflet/dist/leaflet.css';
-import { LatLngExpression, LatLngBoundsExpression } from 'leaflet';
+import {
+  LatLngExpression,
+  LatLngBoundsExpression,
+  LeafletEvent,
+} from 'leaflet';
 
 const MapContainer = dynamic(
   () => import('react-leaflet').then((mod) => mod.MapContainer),
@@ -55,9 +59,9 @@ export default function Home() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      // eslint-disable-next-line global-require
       const L = require('leaflet');
 
-      // Corrige o ícone padrão do Leaflet
       const DefaultIcon = new L.Icon({
         iconRetinaUrl:
           'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
@@ -113,14 +117,18 @@ export default function Home() {
           center={position}
           zoom={5}
           style={{ height: '100%', width: '100%' }}
-          whenReady={(mapInstance) => {
-            mapRef.current = mapInstance.target;
-            mapInstance.target.flyToBounds(initialBounds, { maxZoom: 5 });
-          }}
+          whenReady={
+            ((mapInstance: LeafletEvent) => {
+              mapRef.current = mapInstance.target;
+              mapInstance.target.flyToBounds(initialBounds, { maxZoom: 5 });
+            }) as unknown as () => void
+          }
         >
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            attribution='&copy; <a
+            href="https://www.openstreetmap.org/copyright"
+            OpenStreetMap</a> contributors'
           />
           <Marker position={position}>
             <Popup>Você está aqui</Popup>
