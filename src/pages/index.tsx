@@ -32,12 +32,10 @@ const rioDeJaneiroBounds: LatLngBoundsExpression = [
   [-22.9519, -43.2105],
   [-22.8633, -43.1139],
 ];
-
 const saoPauloBounds: LatLngBoundsExpression = [
   [-23.6821, -46.7359],
   [-23.5015, -46.5445],
 ];
-
 const initialBounds: LatLngBoundsExpression = [
   [-33.7472, -73.9872],
   [5.2718, -34.7922],
@@ -51,8 +49,11 @@ export default function Home() {
   const [rioCount, setRioCount] = useState<number>(0);
   const [spCount, setSpCount] = useState<number>(0);
   const [countsLoaded, setCountsLoaded] = useState<boolean>(false);
+  // activeCity pode ter os valores "initial", "rio", "sp" ou "mine"
   const [activeCity, setActiveCity] = useState<string>('initial');
   const [loading, setLoading] = useState<boolean>(false);
+  // Controla se a contagem para a localização do usuário foi carregada
+  const [locationLoaded, setLocationLoaded] = useState<boolean>(false);
   const mapRef = useRef<any>(null);
 
   // Spinner usando Tailwind CSS
@@ -128,10 +129,11 @@ export default function Home() {
     if (mapRef.current) {
       mapRef.current.flyToBounds(bounds, { maxZoom: zoom });
     }
+    // Para as cidades, utilizamos as contagens pré-carregadas
     if (city === 'initial') {
       setRestaurants([]);
       setLoading(false);
-    } else {
+    } else if (city === 'rio' || city === 'sp') {
       setLoading(true);
       const [lat, lon] =
         city === 'rio'
@@ -146,6 +148,47 @@ export default function Home() {
       setLoading(false);
     }
   };
+
+  // Função para capturar a localização do usuário,
+  // buscar restaurantes na região e atualizar o marcador "Você está aqui"
+  const handleUserLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (userPosition) => {
+          const lat = userPosition.coords.latitude;
+          const lon = userPosition.coords.longitude;
+          const newPosition: LatLngExpression = [lat, lon];
+          // Aproximação de bounds com delta de ~0.45 graus (aprox. 50 km)
+          const bounds: LatLngBoundsExpression = [
+            [lat - 0.45, lon - 0.45],
+            [lat + 0.45, lon + 0.45],
+          ];
+          setLocationLoaded(false);
+          setPosition(newPosition);
+          setActiveCity('mine');
+          if (mapRef.current) {
+            mapRef.current.flyToBounds(bounds, { maxZoom: 13 });
+          }
+          setLoading(true);
+          try {
+            const fetchedRestaurants = await fetchRestaurants(lat, lon);
+            setRestaurants(fetchedRestaurants);
+          } catch (error) {
+            console.error('Erro ao buscar restaurantes:', error);
+          }
+          setLoading(false);
+          setLocationLoaded(true);
+        },
+        (error) => {
+          console.error('Erro ao capturar localização do usuário:', error);
+        },
+      );
+    } else {
+      console.error('Geolocation não é suportado neste navegador.');
+    }
+  };
+
+  // Removida a chamada automática de handleUserLocation ao carregar a página
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -230,6 +273,27 @@ export default function Home() {
             Visualização Inicial
           </button>
         </div>
+        <div className="text-center">
+          <div className="font-bold">Minha Localização</div>
+          <div>
+            {(() => {
+              if ((activeCity === 'mine' && loading) || !locationLoaded) {
+                return spinner;
+              }
+              return restaurants.length > 0
+                ? `${restaurants.length} restaurantes`
+                : '';
+            })()}
+          </div>
+          <button
+            onClick={handleUserLocation}
+            type="button"
+            className="mt-2 px-3 py-1 bg-blue-500
+             hover:bg-blue-600 text-white rounded"
+          >
+            Me Localizar
+          </button>
+        </div>
       </div>
       <div className="h-[90vh]">
         <MapContainer
@@ -260,6 +324,11 @@ export default function Home() {
                 <Popup>{restaurant.name}</Popup>
               </Marker>
             ))}
+          {activeCity === 'mine' && (
+            <Marker position={position}>
+              <Popup>Você está aqui</Popup>
+            </Marker>
+          )}
         </MapContainer>
       </div>
     </div>
