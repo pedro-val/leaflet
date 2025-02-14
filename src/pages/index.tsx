@@ -46,6 +46,9 @@ export default function Home() {
   const [restaurants, setRestaurants] = useState<
     Array<{ id: number; name: string; position: LatLngExpression }>
   >([]);
+  const [userRestaurants, setUserRestaurants] = useState<
+    Array<{ id: number; name: string; position: LatLngExpression }>
+  >([]);
   const [rioCount, setRioCount] = useState<number>(0);
   const [spCount, setSpCount] = useState<number>(0);
   const [countsLoaded, setCountsLoaded] = useState<boolean>(false);
@@ -172,7 +175,7 @@ export default function Home() {
           setLoading(true);
           try {
             const fetchedRestaurants = await fetchRestaurants(lat, lon);
-            setRestaurants(fetchedRestaurants);
+            setUserRestaurants(fetchedRestaurants);
           } catch (error) {
             console.error('Erro ao buscar restaurantes:', error);
           }
@@ -260,6 +263,30 @@ export default function Home() {
           </button>
         </div>
         <div className="text-center">
+          <div className="font-bold">Minha Localização</div>
+          <div>
+            {activeCity === 'mine' && loading
+              ? (() => {
+                  if (loading || !locationLoaded) {
+                    return spinner;
+                  }
+                  if (userRestaurants.length > 0) {
+                    return `${userRestaurants.length} restaurantes`;
+                  }
+                  return '';
+                })()
+              : ''}
+          </div>
+          <button
+            onClick={handleUserLocation}
+            type="button"
+            className="mt-2 px-3 py-1 bg-blue-500
+             hover:bg-blue-600 text-white rounded"
+          >
+            Me Localizar
+          </button>
+        </div>
+        <div className="text-center">
           <div className="font-bold">Visualização Inicial</div>
           <div>{/* Sem número */}</div>
           <button
@@ -271,27 +298,6 @@ export default function Home() {
              hover:bg-blue-600 text-white rounded"
           >
             Visualização Inicial
-          </button>
-        </div>
-        <div className="text-center">
-          <div className="font-bold">Minha Localização</div>
-          <div>
-            {(() => {
-              if ((activeCity === 'mine' && loading) || !locationLoaded) {
-                return spinner;
-              }
-              return restaurants.length > 0
-                ? `${restaurants.length} restaurantes`
-                : '';
-            })()}
-          </div>
-          <button
-            onClick={handleUserLocation}
-            type="button"
-            className="mt-2 px-3 py-1 bg-blue-500
-             hover:bg-blue-600 text-white rounded"
-          >
-            Me Localizar
           </button>
         </div>
       </div>
