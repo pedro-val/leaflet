@@ -249,9 +249,6 @@ export default function Home() {
             href="https://www.openstreetmap.org/copyright"
             >OpenStreetMap</a> contributors'
           />
-          <Marker position={position}>
-            <Popup>Você está aqui</Popup>
-          </Marker>
           {restaurantIcon &&
             restaurants.length > 0 &&
             restaurants.map((restaurant) => (
